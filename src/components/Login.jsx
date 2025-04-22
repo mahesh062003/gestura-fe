@@ -1,81 +1,45 @@
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import "../styles/login.css";
+import axios from "axios"; // Using axios for HTTP requests
+import "../styles/login.css"; // Updated styles for Login component
 
 function Login() {
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [db, setDb] = useState(null);
 
-  // Clear session and init DB
   useEffect(() => {
-    localStorage.removeItem("currentUser");
-    const request = indexedDB.open("UserDatabase", 1);
+    const currentUser = localStorage.getItem("currentUser");
+    if (currentUser) {
+      navigate("/dashboard"); // Redirect if already logged in
+    }
+  }, [navigate]);
 
-    request.onerror = (event) => {
-      console.error("IndexedDB error:", event.target.error);
-      setError("Database error occurred.");
-    };
-
-    request.onsuccess = (event) => {
-      setDb(event.target.result);
-    };
-  }, []);
-
-  const handleLogin = () => {
+  const handleLogin = async () => {
+    // Form validation
     if (!username || !password) {
       setError("Please enter valid credentials");
       return;
     }
 
-    if (!db) {
-      setError("Database not available.");
-      return;
-    }
+    try {
+      const response = await axios.post("http://localhost:5000/api/login", {
+        email: username,
+        password,
+      });
 
-    const transaction = db.transaction(["users"], "readonly");
-    const usersStore = transaction.objectStore("users");
+      if (response.data.token) {
+        // Store JWT token and user data in localStorage
+        localStorage.setItem("token", response.data.token);
+        localStorage.setItem("currentUser", JSON.stringify(response.data.user));
 
-    const getRequest = usersStore.get(username);
-
-    getRequest.onsuccess = (event) => {
-      const user = event.target.result;
-
-      if (user && user.password === password) {
-        loginSuccess(user);
-      } else {
-        const nameIndex = usersStore.index("name");
-        const nameRequest = nameIndex.getAll();
-
-        nameRequest.onsuccess = (event) => {
-          const users = event.target.result;
-          const foundUser = users.find(u => u.name === username && u.password === password);
-
-          if (foundUser) {
-            loginSuccess(foundUser);
-          } else {
-            setError("Invalid username or password");
-          }
-        };
-
-        nameRequest.onerror = (event) => {
-          console.error("Error finding by name:", event.target.error);
-          setError("Login failed. Try again.");
-        };
+        navigate("/dashboard"); // Navigate to dashboard after login
       }
-    };
-
-    getRequest.onerror = (event) => {
-      console.error("Error finding user:", event.target.error);
-      setError("Login failed. Try again.");
-    };
-  };
-
-  const loginSuccess = (user) => {
-    localStorage.setItem("currentUser", JSON.stringify(user));
-    navigate("/dashboard");
+    } catch (err) {
+      console.error("Login error:", err);
+      setError("Invalid username or password");
+    }
   };
 
   return (
