@@ -30,7 +30,7 @@ function Signup() {
     }
 
     try {
-      const response = await axios.post("http://localhost:5000/api/signup", {
+      const response = await axios.post("https://gestbackend.onrender.com/api/signup", {
         name,
         email,
         password,
