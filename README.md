@@ -1,12 +1,68 @@
-# React + Vite
+# Gestura
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Translates speech and typed text into Indian Sign Language, rendering each word
+as a sign animation. Built as an installable PWA so it works on a phone held up
+in conversation.
 
-Currently, two official plugins are available:
+The gap it addresses is one-directional: plenty of tools caption speech for a
+deaf user, but a hearing person with no signing ability still cannot *produce*
+sign. Gestura covers that direction — you speak or type, and the screen signs it.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## How it works
 
-## Expanding the ESLint configuration
+```
+speech  ──► Web Speech API ──┐
+                             ├──► tokenise ──► lookup in gif_sentences.csv
+text    ──► text input ──────┘                      │
+                                                    ▼
+                                   sequence 574 word-level sign GIFs
+```
 
-If you are developing a production application, we recommend using TypeScript and enable type-aware lint rules. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- **`SpeechToSign`** — captures live speech, transcribes it, and plays the
+  matching sign sequence
+- **`TextToSign`** — same path from typed input, for noisy environments or
+  when speech recognition misfires
+- **574 word-level GIFs** in `public/gifs`, keyed by word (`accountant.gif`,
+  `aeroplane.gif`, …), with `sentences.csv` and `gif_sentences.csv` providing
+  example phrases and their sign sequences, parsed client-side with papaparse
+
+Word-level signing rather than fingerspelling: a sign per word reads at
+conversational speed, where spelling each letter does not.
+
+## Layout
+
+```
+src/components/
+  SpeechToSign.jsx   speech capture -> sign sequence
+  TextToSign.jsx     text input -> sign sequence
+  Home.jsx           landing
+  Login.jsx          auth against the backend
+  Signup.jsx         registration
+  Dashboard.jsx      signed-in view
+public/
+  gifs/              574 word-level sign animations
+  sentences.csv      example phrases
+  gif_sentences.csv  phrase -> GIF sequence mapping
+  service-worker.js  offline/PWA support
+```
+
+## Backend
+
+Authentication is a separate Flask service:
+[**gestbackend**](https://github.com/mahesh062003/gestbackend). Its account
+store is in-memory and does not survive a restart — a demonstration auth layer
+rather than a production one.
+
+## Running it
+
+```bash
+npm install
+npm run dev
+```
+
+Speech recognition uses the Web Speech API, which needs a Chromium-based
+browser and microphone permission. The text path works everywhere.
+
+## Stack
+
+React 19 · Vite · React Router · Bootstrap · papaparse · axios · lucide-react
